@@ -1,0 +1,25 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Run Debug Script",
+      "type": "shell",
+      "command": "docker",
+      "args": [
+        "exec",
+        "containeraspen",
+        "/debug.sh",
+        "${input:projectArg}"
+      ],
+      "problemMatcher": []
+    }
+  ],
+  "inputs": [
+    {
+      "id": "projectArg",
+      "type": "promptString",
+      "description": "Enter the name of the project you want to debug. Default : koha_export",
+      "default": "koha_export"
+    }
+  ]
+}
