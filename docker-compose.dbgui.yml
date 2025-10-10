@@ -10,4 +10,4 @@ services:
       - PMA_USER=aspensuper
       - PMA_PASSWORD=aspensuper
     networks:
-      - aspennet
+      - aspen-net
