@@ -101,4 +101,5 @@ An alternative to this is to setup path mappings in your debug configurations fo
 VSCode mappings are included in the repository and can be copied to the correct location with the below command:
 ```
 cp $ASPEN_DOCKER/vscodedebugconfig.json $ASPEN_CLONE/.vscode/launch.json
+cp $ASPEN_DOCKER/vscodetasksconfig.json $ASPEN_CLONE/.vscode/tasks.json
 ```

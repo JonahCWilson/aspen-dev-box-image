@@ -49,6 +49,18 @@
                 "uriFormat": "http://localhost:%s",
                 "action": "openExternally"
             }
+        },
+
+        {
+            "type": "java",
+            "name": "Debug Java in Docker",
+            "request": "attach",
+            "hostName": "localhost",
+            "port": 5005,
+            "sourcePaths": [
+                "${workspaceFolder}/code/koha_export/src"
+            ],
+            "preLaunchTask": "Run Debug Script"
         }
     ]
 }
