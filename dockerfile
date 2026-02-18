@@ -66,6 +66,9 @@ RUN mkdir -p /etc/php/8.4/cli/conf.d /etc/php/8.4/apache2/conf.d \
     && echo "zend_extension=xdebug.so" > /etc/php/8.4/cli/conf.d/20-xdebug.ini \
     && echo "zend_extension=xdebug.so" > /etc/php/8.4/apache2/conf.d/20-xdebug.ini
 
+# Put custom config into appropriate folder
+COPY php-custom.ini /etc/php/8.4/fpm/conf.d/99-custom.ini
+
 # Prepare templates folder
 RUN mkdir /templates
 COPY php.ini_template /templates/php.ini
