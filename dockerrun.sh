@@ -31,6 +31,7 @@ fi
 echo "www-data ALL=(ALL) NOPASSWD: ALL" > /etc/sudoers.d/www-data
 
 export CONFIG_DIRECTORY="/usr/local/aspen-discovery/sites/${SITENAME}"
+mkdir -p $CONFIG_DIRECTORY 2>/dev/null
 
 cd /usr/local/aspen-discovery/docker/files/scripts
 
