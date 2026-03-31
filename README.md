@@ -43,15 +43,21 @@ cd $PROJECTS_DIR
 git clone https://github.com/Aspen-Discovery/aspen-discovery.git aspen-discovery
 ```
 
-* Set some **mandatory** environment variables in your .bashrc:
+* Set some **mandatory** environment variables in your .bashrc (or .zshrc):
 
 ```shell
 echo "export PROJECTS_DIR=$PROJECTS_DIR" >> ~/.bashrc
 echo 'export ASPEN_CLONE=$PROJECTS_DIR/aspen-discovery' >> ~/.bashrc
 echo 'export ASPEN_DOCKER=$PROJECTS_DIR/aspen-dev-box'  >> ~/.bashrc
+echo 'export UID=$(id -u)' >> ~/.bashrc
+echo 'export GID=$(id -g)' >> ~/.bashrc
 [ "$(uname)" == "Darwin" ] && echo 'export PATH=$PATH:$ASPEN_DOCKER/bin/darwin' >> ~/.bashrc
 [ "$(uname)" == "Linux" ] && echo 'export PATH=$PATH:$ASPEN_DOCKER/bin/linux' >> ~/.bashrc
 ```
+
+The `UID` and `GID` exports are required so the container can match its
+internal users to your host user, avoiding file permission issues on
+bind-mounted source code.
 
 **Note:** you will need to log out and log back in (or start a new terminal window) for this to take effect.
 
