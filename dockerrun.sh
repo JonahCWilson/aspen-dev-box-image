@@ -3,7 +3,7 @@
 
 set -e
 
-SITENAME="${SITENAME:-test.localhostaspen}"
+SITENAME="${SITE_NAME:-test.localhostaspen}"
 LOCAL_USER_ID="${LOCAL_USER_ID:-501}"
 LOCAL_GROUP_ID="${LOCAL_GROUP_ID:-20}"
 
@@ -28,42 +28,25 @@ else
     usermod -o -u "${LOCAL_USER_ID}" -g www-data solr
 fi
 
-mkdir -p /data/aspen-discovery/${SITENAME}/covers/{small,large,medium,original}
-mkdir -p /data/aspen-discovery/${SITENAME}/solr7
-mkdir -p /data/aspen-discovery/${SITENAME}/ils/{marc,marc_delta,marc_recs,supplemental}
-mkdir -p /var/log/aspen-discovery/${SITENAME}
-mkdir -p /var/run/aspen/
+export CONFIG_DIRECTORY="/usr/local/aspen-discovery/sites/${SITENAME}"
 
-echo "Setting ownership on container-local directories..."
-chown -R www-data:www-data /var/log/aspen-discovery/
-chown -R aspen:www-data /data/aspen-discovery/${SITENAME}/
-chown -R aspen:www-data /var/run/aspen/
+cd /usr/local/aspen-discovery/docker/files/scripts
 
-mkdir -p /usr/local/aspen-discovery/tmp/smarty/compile/
-chown -R www-data:www-data /usr/local/aspen-discovery/tmp/
+echo "Generating site configuration for ${SITENAME}..."
+php createConfig.php "${CONFIG_DIRECTORY}"
+php syncEnvToConfig.php || true
 
+echo "Initializing database..."
+php initDatabase.php
+
+echo "Setting up directories and permissions..."
+php createDirs.php
+
+echo "Running pending database updates..."
+php updateDatabase.php "${SITENAME}"
+
+crontab "${CONFIG_DIRECTORY}/conf/crontab"
 service cron start
-
-echo "Generating Apache configuration from template..."
-bash /generate-apache-config.sh
-
-echo "Configuring PHP-FPM to listen on TCP port 9000..."
-cat > /etc/php/8.4/fpm/pool.d/www.conf <<'EOF'
-[www]
-user = www-data
-group = www-data
-listen = 127.0.0.1:9000
-pm = dynamic
-pm.max_children = 6
-pm.start_servers = 2
-pm.min_spare_servers = 2
-pm.max_spare_servers = 5
-chdir = /usr/local/aspen-discovery/code/web
-request_terminate_timeout = 300
-catch_workers_output = yes
-php_admin_value[memory_limit] = 512M
-php_admin_value[max_execution_time] = 300
-EOF
 
 echo "Starting PHP-FPM..."
 php-fpm8.4 &
@@ -80,8 +63,6 @@ done
 echo "Starting Apache..."
 service apache2 start
 
-curl -k http://localhost/API/SystemAPI?method=runPendingDatabaseUpdates
-
-crontab /etc/cron.d/cron
+sudo -u www-data php /usr/local/aspen-discovery/docker/files/cron/checkBackgroundProcessesDocker.php "${SITENAME}" || true
 
 /bin/bash -c "trap : TERM INT; sleep infinity & wait"
