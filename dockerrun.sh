@@ -4,6 +4,23 @@
 set -e
 
 SITENAME="${SITENAME:-test.localhostaspen}"
+LOCAL_USER_ID="${LOCAL_USER_ID:-501}"
+LOCAL_GROUP_ID="${LOCAL_GROUP_ID:-20}"
+
+echo "Configuring container users to match host (UID=${LOCAL_USER_ID}, GID=${LOCAL_GROUP_ID})..."
+
+# Remap www-data group GID — PHP-FPM (group=www-data) and Apache (APACHE_RUN_GROUP)
+# resolve this group name at runtime, so it must carry the host GID.
+groupmod -o -g "${LOCAL_GROUP_ID}" www-data
+getent group aspen_apache > /dev/null 2>&1 || groupadd -o -g "${LOCAL_GROUP_ID}" aspen_apache
+usermod -o -u "${LOCAL_USER_ID}" www-data
+usermod -a -G aspen_apache www-data
+
+if ! id aspen > /dev/null 2>&1; then
+    useradd -r -o -u "${LOCAL_USER_ID}" -g www-data -G aspen_apache -m -s /bin/bash aspen
+else
+    usermod -o -u "${LOCAL_USER_ID}" -g www-data aspen
+fi
 
 ./usr/local/aspen-discovery/install/setup_aspen_user_debian.sh
 
