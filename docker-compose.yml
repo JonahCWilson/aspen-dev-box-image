@@ -8,7 +8,6 @@ services:
     volumes:
       - "$ASPEN_DOCKER/dockerrun.sh:/entrypoint.sh"
       - "$ASPEN_CLONE:/usr/local/aspen-discovery"
-      - "$ASPEN_DOCKER/site/:/usr/local/aspen-discovery/sites/${SITE_NAME:-test.localhostaspen}"
       - "$ASPEN_DOCKER/aliases:/root/.bashrc"
       - "$ASPEN_DOCKER/tmp:/mnt/tmp"
     ports:
