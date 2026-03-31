@@ -30,8 +30,8 @@ services:
     volumes:
       - $ASPEN_CLONE/install/aspen.sql:/docker-entrypoint-initdb.d/Aspen-db-startup.sql
     healthcheck:
-      interval: 60s
-      retries: 10
+      interval: 10s
+      retries: 30
       test: [ "CMD", "healthcheck.sh", "--su-mysql", "--connect", "--innodb_initialized" ]
     networks:
       - aspen-net
