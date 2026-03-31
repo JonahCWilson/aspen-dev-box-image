@@ -31,18 +31,16 @@ fi
 mkdir -p /data/aspen-discovery/${SITENAME}/covers/{small,large,medium,original}
 mkdir -p /data/aspen-discovery/${SITENAME}/solr7
 mkdir -p /data/aspen-discovery/${SITENAME}/ils/{marc,marc_delta,marc_recs,supplemental}
+mkdir -p /var/log/aspen-discovery/${SITENAME}
+mkdir -p /var/run/aspen/
+
+echo "Setting ownership on container-local directories..."
+chown -R www-data:www-data /var/log/aspen-discovery/
+chown -R aspen:www-data /data/aspen-discovery/${SITENAME}/
+chown -R aspen:www-data /var/run/aspen/
 
 mkdir -p /usr/local/aspen-discovery/tmp/smarty/compile/
-
-mkdir -p /var/log/aspen-discovery/${SITENAME}
-
-echo "Setting ownership on directories..."
-chown -R www-data:www-data /var/log/aspen-discovery/
 chown -R www-data:www-data /usr/local/aspen-discovery/tmp/
-chown -R aspen:aspen /data/aspen-discovery/${SITENAME}/
-
-mkdir -p /var/run/aspen/
-chown -R aspen:aspen /var/run/aspen/
 
 service cron start
 
