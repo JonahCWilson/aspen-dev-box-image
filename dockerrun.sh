@@ -47,8 +47,15 @@ php syncEnvToConfig.php || true
 echo "Initializing database..."
 php initDatabase.php
 
-echo "Setting up directories and permissions..."
-php createDirs.php
+echo "Setting up directories and service configs..."
+mkdir -p /usr/local/aspen-discovery/tmp/smarty/compile
+mkdir -p /data/aspen-discovery/${SITENAME}/{covers/{small,large,medium,original},solr7,ils/{marc,marc_delta,marc_recs,supplemental},uploads,files,fonts}
+mkdir -p /var/log/aspen-discovery/${SITENAME}/logs
+mkdir -p /var/run/aspen
+chown -R www-data:www-data /usr/local/aspen-discovery/tmp /var/log/aspen-discovery /data/aspen-discovery/${SITENAME}
+chown -R aspen:www-data /var/run/aspen
+cp "${CONFIG_DIRECTORY}/httpd-${SITENAME}.conf" /etc/apache2/sites-enabled/
+cp "${CONFIG_DIRECTORY}/conf/php-fpm.conf" /etc/php/8.4/fpm/pool.d/
 
 echo "Running pending database updates..."
 php updateDatabase.php "${SITENAME}"
