@@ -2,7 +2,8 @@ services:
   aspen-dev-box:
     image: aspendiscovery/aspen:latest
     environment:
-      - LOCAL_USER_ID=${LOCAL_USER_ID:-501}
+      - LOCAL_USER_ID=${UID:-501}
+      - LOCAL_GROUP_ID=${GID:-20}
     volumes:
       - "$ASPEN_DOCKER/dockerrun.sh:/entrypoint.sh"
       - "$ASPEN_DOCKER/generate-apache-config.sh:/generate-apache-config.sh"
