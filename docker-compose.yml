@@ -1,15 +1,14 @@
 services:
   aspen-dev-box:
     image: aspendiscovery/aspen:latest
+    env_file: .env
     environment:
       - LOCAL_USER_ID=${UID:-501}
       - LOCAL_GROUP_ID=${GID:-20}
     volumes:
       - "$ASPEN_DOCKER/dockerrun.sh:/entrypoint.sh"
-      - "$ASPEN_DOCKER/generate-apache-config.sh:/generate-apache-config.sh"
       - "$ASPEN_CLONE:/usr/local/aspen-discovery"
-      - "$ASPEN_DOCKER/site/:/usr/local/aspen-discovery/sites/test.localhostaspen"
-      - "$ASPEN_DOCKER/site/conf/crontab_settings.txt:/etc/cron.d/cron"
+      - "$ASPEN_DOCKER/site/:/usr/local/aspen-discovery/sites/${SITE_NAME:-test.localhostaspen}"
       - "$ASPEN_DOCKER/aliases:/root/.bashrc"
       - "$ASPEN_DOCKER/tmp:/mnt/tmp"
     ports:
@@ -25,10 +24,10 @@ services:
   aspen-db:
     container_name: aspen-db
     environment:
-      - MARIADB_ROOT_PASSWORD=aspen
-      - MARIADB_DATABASE=aspen
-      - MARIADB_USER=aspensuper
-      - MARIADB_PASSWORD=aspensuper
+      - MARIADB_ROOT_PASSWORD=${DATABASE_ROOT_PASSWORD:-aspen}
+      - MARIADB_DATABASE=${DATABASE_NAME:-aspen}
+      - MARIADB_USER=${DATABASE_USER:-aspensuper}
+      - MARIADB_PASSWORD=${DATABASE_PASSWORD:-aspensuper}
     image: "mariadb:10.11.5"
     volumes:
       - $ASPEN_CLONE/install/aspen.sql:/docker-entrypoint-initdb.d/Aspen-db-startup.sql
