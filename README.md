@@ -61,6 +61,15 @@ bind-mounted source code.
 
 **Note:** you will need to log out and log back in (or start a new terminal window) for this to take effect.
 
+* Copy the example environment file and adjust to taste:
+
+```shell
+cd $ASPEN_DOCKER
+cp .env.example .env
+```
+
+Review `.env` and change any values that differ from your local setup (site name, timezone, passwords, etc.).
+
 * Now you can start up your devbox
 
 ```shell
