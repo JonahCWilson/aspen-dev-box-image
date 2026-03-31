@@ -22,14 +22,10 @@ else
     usermod -o -u "${LOCAL_USER_ID}" -g www-data aspen
 fi
 
-./usr/local/aspen-discovery/install/setup_aspen_user_debian.sh
-
-echo "Setting up user permissions..."
-if [[ ! -z "${LOCAL_USER_ID}" && "${LOCAL_USER_ID}" != "33" ]]; then
-    echo "Changing www-data UID to ${LOCAL_USER_ID}"
-    usermod -o -u "${LOCAL_USER_ID}" www-data
-    echo "Changing aspen UID to ${LOCAL_USER_ID}"
-    usermod -o -u "${LOCAL_USER_ID}" aspen
+if ! id solr > /dev/null 2>&1; then
+    useradd -r -o -u "${LOCAL_USER_ID}" -g www-data -M -s /bin/bash solr
+else
+    usermod -o -u "${LOCAL_USER_ID}" -g www-data solr
 fi
 
 mkdir -p /data/aspen-discovery/${SITENAME}/covers/{small,large,medium,original}
