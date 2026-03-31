@@ -65,9 +65,6 @@ php_admin_value[memory_limit] = 512M
 php_admin_value[max_execution_time] = 300
 EOF
 
-echo "Enabling Apache modules for PHP-FPM..."
-a2enmod proxy_fcgi setenvif rewrite
-
 echo "Starting PHP-FPM..."
 php-fpm8.4 &
 
