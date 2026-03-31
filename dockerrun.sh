@@ -32,8 +32,12 @@ export CONFIG_DIRECTORY="/usr/local/aspen-discovery/sites/${SITENAME}"
 
 cd /usr/local/aspen-discovery/docker/files/scripts
 
-echo "Generating site configuration for ${SITENAME}..."
-php createConfig.php "${CONFIG_DIRECTORY}"
+if [ ! -f "${CONFIG_DIRECTORY}/conf/config.ini" ]; then
+    echo "Creating site configuration for ${SITENAME}..."
+    php createConfig.php "${CONFIG_DIRECTORY}"
+else
+    echo "Site configuration exists, syncing env vars..."
+fi
 php syncEnvToConfig.php || true
 
 echo "Initializing database..."
