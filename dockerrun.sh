@@ -13,8 +13,8 @@ echo "Configuring container users to match host (UID=${LOCAL_USER_ID}, GID=${LOC
 # resolve this group name at runtime, so it must carry the host GID.
 groupmod -o -g "${LOCAL_GROUP_ID}" www-data
 getent group aspen_apache > /dev/null 2>&1 || groupadd -o -g "${LOCAL_GROUP_ID}" aspen_apache
-usermod -o -u "${LOCAL_USER_ID}" www-data
-usermod -a -G aspen_apache www-data
+usermod -o -u "${LOCAL_USER_ID}" -s /bin/bash www-data
+usermod -a -G aspen_apache,sudo www-data
 
 if ! id aspen > /dev/null 2>&1; then
     useradd -r -o -u "${LOCAL_USER_ID}" -g www-data -G aspen_apache -m -s /bin/bash aspen
@@ -28,6 +28,8 @@ else
     usermod -o -u "${LOCAL_USER_ID}" -g www-data solr
 fi
 
+echo "www-data ALL=(ALL) NOPASSWD: ALL" > /etc/sudoers.d/www-data
+
 export CONFIG_DIRECTORY="/usr/local/aspen-discovery/sites/${SITENAME}"
 
 cd /usr/local/aspen-discovery/docker/files/scripts
@@ -36,8 +38,9 @@ if [ ! -f "${CONFIG_DIRECTORY}/conf/config.ini" ]; then
     echo "Creating site configuration for ${SITENAME}..."
     php createConfig.php "${CONFIG_DIRECTORY}"
 else
-    echo "Site configuration exists, syncing env vars..."
-fi
+    echo "Site configuration exists..."
+fi 
+echo "syncing env vars..."
 php syncEnvToConfig.php || true
 
 echo "Initializing database..."
