@@ -10,8 +10,7 @@ services:
       - "$ASPEN_CLONE:/usr/local/aspen-discovery"
       - "$ASPEN_DOCKER/aliases:/var/www/.bashrc"
     ports:
-      - "8083:80"
-    container_name: containeraspen
+      - "${ASPEN_PORT:-8083}:80"
     networks:
       - aspen-net
     tty: true
@@ -20,7 +19,6 @@ services:
         condition: service_healthy
 
   aspen-db:
-    container_name: aspen-db
     environment:
       - MARIADB_ROOT_PASSWORD=${DATABASE_ROOT_PASSWORD:-aspen}
       - MARIADB_DATABASE=${DATABASE_NAME:-aspen}
