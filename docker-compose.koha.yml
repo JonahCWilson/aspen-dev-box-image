@@ -21,7 +21,6 @@ services:
 
 networks:
   aspen-net:
-    name: aspen-net
     driver: bridge
   kohanet:
     external: true
