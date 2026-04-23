@@ -53,6 +53,13 @@ mkdir -p /data/aspen-discovery/${SITENAME}/{covers/{small,large,medium,original}
 mkdir -p /var/log/aspen-discovery/${SITENAME}/logs
 mkdir -p /var/run/aspen
 chown -R www-data:www-data /usr/local/aspen-discovery/tmp /var/log/aspen-discovery /data/aspen-discovery/${SITENAME}
+# Only chown CONFIG_DIRECTORY when it's a separate mount (tmpfs/volume used by
+# multi-instance sandbox setups). In standalone dev, CONFIG_DIRECTORY is a
+# subdirectory of the bind-mounted source tree and chowning it would flip the
+# host checkout's ownership — skip it.
+if mountpoint -q "${CONFIG_DIRECTORY}"; then
+    chown -R www-data:www-data "${CONFIG_DIRECTORY}"
+fi
 chown -R aspen:www-data /var/run/aspen
 cp "${CONFIG_DIRECTORY}/httpd-${SITENAME}.conf" /etc/apache2/sites-enabled/
 cp "${CONFIG_DIRECTORY}/conf/php-fpm.conf" /etc/php/8.4/fpm/pool.d/
