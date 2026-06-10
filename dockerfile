@@ -1,104 +1,53 @@
-# Base image
-FROM debian:bookworm-slim
+FROM debian:bookworm
 
-# Install basic tools and dependencies for Sury PHP repo
-RUN apt -y update \
-  && apt -y install \
-    apt-utils \
-    wget \
-    apache2 \
-    apt-transport-https \
-    lsb-release \
+ENV container docker
+STOPSIGNAL SIGRTMIN+3
+
+# --- systemd base ---
+RUN apt-get update && apt-get install -y \
+    systemd \
+    systemd-sysv \
+    dbus \
+    dbus-user-session \
     ca-certificates \
     curl \
-    git \
-    vim \
-    bind9 \
-    bind9utils \
-    software-properties-common \
-    default-jdk \
-    openjdk-17-jdk \
-    unzip \
-    rng-tools \
-    certbot \
-    python3-certbot-apache \
-    mariadb-client \
-    expect \
-    sudo \
-    cron \
-    locales \
+    wget \
     gnupg2 \
-    lsof \
-  && rm -rf /var/cache/apt/archives/* \
-  && rm -rf /var/lib/apt/lists/*
+    lsb-release \
+    apt-transport-https \
+    locales \
+    && rm -rf /var/lib/apt/lists/*
 
-# Configure locale
-RUN sed -i -e 's/# en_US.UTF-8 UTF-8/en_US.UTF-8 UTF-8/' /etc/locale.gen \
-    && dpkg-reconfigure --frontend=noninteractive locales \
-    && update-locale LANG=en_US.UTF-8
+# --- required for systemd in containers ---
+RUN mkdir -p /run/systemd \
+    && echo "docker" > /run/systemd/container \
+    && systemctl set-default multi-user.target
 
-# Add Sury PHP repository for Bookworm (PHP 8.4)
-RUN wget -O /etc/apt/trusted.gpg.d/php.gpg https://packages.sury.org/php/apt.gpg \
-    && sh -c 'echo "deb https://packages.sury.org/php/ bookworm main" > /etc/apt/sources.list.d/php.list' \
-    && apt -y update
+# --- Sury PHP repo (needed for php8.4) ---
+RUN curl -fsSL https://packages.sury.org/php/apt.gpg \
+    | gpg --dearmor -o /etc/apt/trusted.gpg.d/php.gpg \
+    && echo "deb https://packages.sury.org/php/ bookworm main" \
+    > /etc/apt/sources.list.d/php.list
 
-# Install PHP 8.4 + dev + Xdebug + extensions
-RUN apt -y install \
+RUN apt-get update
+
+# --- your stack ---
+RUN apt-get install -y \
+    apache2 \
     php8.4 \
-    php8.4-dev \
-    php-pear \
     php8.4-fpm \
-    php8.4-xdebug \
-    php8.4-gd \
-    php8.4-curl \
-    php8.4-mysql \
-    php8.4-zip \
-    php8.4-xml \
-    php8.4-intl \
-    php8.4-mbstring \
-  && rm -rf /var/lib/apt/lists/*
+    openjdk-17-jdk \
+    cron \
+    && rm -rf /var/lib/apt/lists/*
 
-# Enable Apache rewrite module
-RUN a2enmod rewrite
+# --- systemd service ---
+COPY koha_indexer.service /etc/systemd/system/koha_indexer.service
 
-# Ensure Xdebug is enabled in both CLI and Apache
-RUN mkdir -p /etc/php/8.4/cli/conf.d /etc/php/8.4/apache2/conf.d \
-    && echo "zend_extension=xdebug.so" > /etc/php/8.4/cli/conf.d/20-xdebug.ini \
-    && echo "zend_extension=xdebug.so" > /etc/php/8.4/apache2/conf.d/20-xdebug.ini
+# IMPORTANT: enable service correctly (NOT systemctl)
+RUN ln -s /etc/systemd/system/koha_indexer.service \
+    /etc/systemd/system/multi-user.target.wants/koha_indexer.service
 
-# Put custom config into appropriate folder
-COPY php-custom.ini /etc/php/8.4/fpm/conf.d/99-custom.ini
+RUN systemctl mask getty.target
 
-# Prepare templates folder
-RUN mkdir /templates
-COPY php.ini_template /templates/php.ini
-
-# Aspen-Discovery setup
-RUN cd /usr/local \
-  && git clone --depth=1 https://github.com/mdnoble73/aspen-discovery.git \
-  && rm -rf ./aspen-discovery/.git
-
-RUN cd /usr/local/aspen-discovery \
-  && mkdir tmp \
-  && chown -R www-data:www-data tmp \
-  && chmod -R 755 tmp
-
-# Create users and setup directories
-RUN cd /usr/local/aspen-discovery/install \
-  && sed -i 's/adduser/useradd/g' setup_aspen_user_debian.sh \
-  && mkdir -p /var/log/aspen-discovery \
-  && bash /usr/local/aspen-discovery/install/setup_aspen_user_debian.sh \
-  && mkdir -p /data/aspen-discovery/test.localhostaspen/solr7 \
-  && cp -r /usr/local/aspen-discovery/data_dir_setup/solr7 /data/aspen-discovery/test.localhostaspen \
-  && rm -R /usr/local/aspen-discovery/
-
-COPY dockerrun.sh /
-RUN chmod +x /dockerrun.sh
-
-ENTRYPOINT [ "/dockerrun.sh" ]
-CMD [ "sleep", "infinity" ]
-# Increase entropy
-#RUN cp /usr/local/aspen-discovery/install/limits.conf /etc/security/limits.conf \
-#    && cp /usr/local/aspen-discovery/install/rngd.service /etc/systemd/system/rngd.service \
-#    && systemctl daemon-reload \
-#    && systemctl start rngd
+# --- systemd init ---
+CMD ["/lib/systemd/systemd"]
