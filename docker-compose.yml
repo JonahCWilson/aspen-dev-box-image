@@ -1,19 +1,16 @@
 services:
   aspen-dev-box:
     image: aspendiscovery/aspen:latest
+    env_file: .env
     environment:
-      - LOCAL_USER_ID=${LOCAL_USER_ID:-501}
+      - LOCAL_USER_ID=${UID:-501}
+      - LOCAL_GROUP_ID=${GID:-20}
     volumes:
       - "$ASPEN_DOCKER/dockerrun.sh:/entrypoint.sh"
-      - "$ASPEN_DOCKER/generate-apache-config.sh:/generate-apache-config.sh"
       - "$ASPEN_CLONE:/usr/local/aspen-discovery"
-      - "$ASPEN_DOCKER/site/:/usr/local/aspen-discovery/sites/test.localhostaspen"
-      - "$ASPEN_DOCKER/site/conf/crontab_settings.txt:/etc/cron.d/cron"
-      - "$ASPEN_DOCKER/aliases:/root/.bashrc"
-      - "$ASPEN_DOCKER/tmp:/mnt/tmp"
+      - "$ASPEN_DOCKER/aliases:/var/www/.bashrc"
     ports:
-      - "8083:80"
-    container_name: containeraspen
+      - "${ASPEN_PORT:-8083}:80"
     networks:
       - aspen-net
     tty: true
@@ -22,18 +19,17 @@ services:
         condition: service_healthy
 
   aspen-db:
-    container_name: aspen-db
     environment:
-      - MARIADB_ROOT_PASSWORD=aspen
-      - MARIADB_DATABASE=aspen
-      - MARIADB_USER=aspensuper
-      - MARIADB_PASSWORD=aspensuper
+      - MARIADB_ROOT_PASSWORD=${DATABASE_ROOT_PASSWORD:-aspen}
+      - MARIADB_DATABASE=${DATABASE_NAME:-aspen}
+      - MARIADB_USER=${DATABASE_USER:-aspensuper}
+      - MARIADB_PASSWORD=${DATABASE_PASSWORD:-aspensuper}
     image: "mariadb:10.11.5"
     volumes:
       - $ASPEN_CLONE/install/aspen.sql:/docker-entrypoint-initdb.d/Aspen-db-startup.sql
     healthcheck:
-      interval: 60s
-      retries: 10
+      interval: 10s
+      retries: 30
       test: [ "CMD", "healthcheck.sh", "--su-mysql", "--connect", "--innodb_initialized" ]
     networks:
       - aspen-net
@@ -45,6 +41,8 @@ services:
       - SOLR_HOST=solr
     ports:
       - "8084:8084"
+    volumes:
+      - $ASPEN_CLONE/data_dir_setup/solr7:/opt/solr/server/solr/configsets
     deploy:
       endpoint_mode: dnsrr
     networks:
@@ -95,5 +93,4 @@ services:
 
 networks:
   aspen-net:
-    name: aspen-net
     driver: bridge

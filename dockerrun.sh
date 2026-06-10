@@ -3,59 +3,72 @@
 
 set -e
 
-SITENAME="${SITENAME:-test.localhostaspen}"
+SITENAME="${SITE_NAME:-test.localhostaspen}"
+LOCAL_USER_ID="${LOCAL_USER_ID:-501}"
+LOCAL_GROUP_ID="${LOCAL_GROUP_ID:-20}"
 
-./usr/local/aspen-discovery/install/setup_aspen_user_debian.sh
+echo "Configuring container users to match host (UID=${LOCAL_USER_ID}, GID=${LOCAL_GROUP_ID})..."
 
-echo "Setting up user permissions..."
-if [[ ! -z "${LOCAL_USER_ID}" && "${LOCAL_USER_ID}" != "33" ]]; then
-    echo "Changing www-data UID to ${LOCAL_USER_ID}"
-    usermod -o -u "${LOCAL_USER_ID}" www-data
-    echo "Changing aspen UID to ${LOCAL_USER_ID}"
-    usermod -o -u "${LOCAL_USER_ID}" aspen
+# Remap www-data group GID — PHP-FPM (group=www-data) and Apache (APACHE_RUN_GROUP)
+# resolve this group name at runtime, so it must carry the host GID.
+groupmod -o -g "${LOCAL_GROUP_ID}" www-data
+getent group aspen_apache > /dev/null 2>&1 || groupadd -o -g "${LOCAL_GROUP_ID}" aspen_apache
+usermod -o -u "${LOCAL_USER_ID}" -s /bin/bash www-data
+usermod -a -G aspen_apache,sudo www-data
+
+if ! id aspen > /dev/null 2>&1; then
+    useradd -r -o -u "${LOCAL_USER_ID}" -g www-data -G aspen_apache -m -s /bin/bash aspen
+else
+    usermod -o -u "${LOCAL_USER_ID}" -g www-data aspen
 fi
 
-mkdir -p /data/aspen-discovery/${SITENAME}/covers/{small,large,medium,original}
-mkdir -p /data/aspen-discovery/${SITENAME}/solr7
-mkdir -p /data/aspen-discovery/${SITENAME}/ils/{marc,marc_delta,marc_recs,supplemental}
+if ! id solr > /dev/null 2>&1; then
+    useradd -r -o -u "${LOCAL_USER_ID}" -g www-data -M -s /bin/bash solr
+else
+    usermod -o -u "${LOCAL_USER_ID}" -g www-data solr
+fi
 
-mkdir -p /usr/local/aspen-discovery/tmp/smarty/compile/
+echo "www-data ALL=(ALL) NOPASSWD: ALL" > /etc/sudoers.d/www-data
 
-mkdir -p /var/log/aspen-discovery/${SITENAME}
+export CONFIG_DIRECTORY="/usr/local/aspen-discovery/sites/${SITENAME}"
+mkdir -p $CONFIG_DIRECTORY 2>/dev/null
 
-echo "Setting ownership on directories..."
-chown -R www-data:www-data /var/log/aspen-discovery/
-chown -R www-data:www-data /usr/local/aspen-discovery/tmp/
-chown -R aspen:aspen /data/aspen-discovery/${SITENAME}/
+cd /usr/local/aspen-discovery/docker/files/scripts
 
-mkdir -p /var/run/aspen/
-chown -R aspen:aspen /var/run/aspen/
+if [ ! -f "${CONFIG_DIRECTORY}/conf/config.ini" ]; then
+    echo "Creating site configuration for ${SITENAME}..."
+    php createConfig.php "${CONFIG_DIRECTORY}"
+else
+    echo "Site configuration exists..."
+fi 
+echo "syncing env vars..."
+php syncEnvToConfig.php || true
 
+echo "Initializing database..."
+php initDatabase.php
+
+echo "Setting up directories and service configs..."
+mkdir -p /usr/local/aspen-discovery/tmp/smarty/compile
+mkdir -p /data/aspen-discovery/${SITENAME}/{covers/{small,large,medium,original},solr7,ils/{marc,marc_delta,marc_recs,supplemental},uploads,files,fonts}
+mkdir -p /var/log/aspen-discovery/${SITENAME}/logs
+mkdir -p /var/run/aspen
+chown -R www-data:www-data /usr/local/aspen-discovery/tmp /var/log/aspen-discovery /data/aspen-discovery/${SITENAME}
+# Only chown CONFIG_DIRECTORY when it's a separate mount (tmpfs/volume used by
+# multi-instance sandbox setups). In standalone dev, CONFIG_DIRECTORY is a
+# subdirectory of the bind-mounted source tree and chowning it would flip the
+# host checkout's ownership — skip it.
+if mountpoint -q "${CONFIG_DIRECTORY}"; then
+    chown -R www-data:www-data "${CONFIG_DIRECTORY}"
+fi
+chown -R aspen:www-data /var/run/aspen
+cp "${CONFIG_DIRECTORY}/httpd-${SITENAME}.conf" /etc/apache2/sites-enabled/
+cp "${CONFIG_DIRECTORY}/conf/php-fpm.conf" /etc/php/8.4/fpm/pool.d/
+
+echo "Running pending database updates..."
+php updateDatabase.php "${SITENAME}"
+
+crontab "${CONFIG_DIRECTORY}/conf/crontab"
 service cron start
-
-echo "Generating Apache configuration from template..."
-bash /generate-apache-config.sh
-
-echo "Configuring PHP-FPM to listen on TCP port 9000..."
-cat > /etc/php/8.4/fpm/pool.d/www.conf <<'EOF'
-[www]
-user = www-data
-group = www-data
-listen = 127.0.0.1:9000
-pm = dynamic
-pm.max_children = 6
-pm.start_servers = 2
-pm.min_spare_servers = 2
-pm.max_spare_servers = 5
-chdir = /usr/local/aspen-discovery/code/web
-request_terminate_timeout = 300
-catch_workers_output = yes
-php_admin_value[memory_limit] = 512M
-php_admin_value[max_execution_time] = 300
-EOF
-
-echo "Enabling Apache modules for PHP-FPM..."
-a2enmod proxy_fcgi setenvif rewrite
 
 echo "Starting PHP-FPM..."
 php-fpm8.4 &
@@ -72,8 +85,6 @@ done
 echo "Starting Apache..."
 service apache2 start
 
-curl -k http://localhost/API/SystemAPI?method=runPendingDatabaseUpdates
-
-crontab /etc/cron.d/cron
+sudo -u www-data php /usr/local/aspen-discovery/docker/files/cron/checkBackgroundProcessesDocker.php "${SITENAME}" || true
 
 /bin/bash -c "trap : TERM INT; sleep infinity & wait"
